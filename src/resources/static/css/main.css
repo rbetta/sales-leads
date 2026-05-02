@@ -1,0 +1,97 @@
+table.data {
+	border: 1px solid #c0c0c0;
+	border-collapse: collapse;
+}
+
+table.data caption {
+	font-weight: bold;
+}
+
+table.data th {
+	border: 1px solid #c0c0c0;
+	text-align: left;
+	font-weight: bold;
+	padding: 5px;
+}
+
+table.data td {
+	border: 1px solid #c0c0c0;
+	padding: 5px;
+}
+
+
+
+/* BEGIN: General Form Fields */
+
+form .form-field {
+	display: block;
+	margin-top: 10px;
+	margin-bottom: 10px;
+}
+
+form label {
+	font-weight: bold;
+	display: inline-block;
+	white-space: nowrap;
+	min-width: 20ex;
+}
+
+form div.label {
+	font-weight: bold;
+	display: inline-block;
+	white-space: nowrap;
+	min-width: 20ex;
+}
+
+form input[type=text],
+form input[type=password] {
+	width: 20ex;
+}
+
+form .read-only-field {
+	display: inline-block;
+	white-space: nowrap;
+}
+
+form fieldset {
+	display: block;
+	width: 38ex;
+	padding-left: 1ex;
+	padding-right: 1ex;
+}
+
+/*
+ * Some form fields are composed of multiple HTML elements that must
+ * be kept together on a single line (e.g. a checkbox and its label).
+ */
+form .form-field-components {
+	white-space: nowrap;
+	width: min-content;
+	display: inline-block;
+}
+
+/*
+ * It is expected that fieldsets will contain two or more
+ * pairs of fields, in this order:
+ * 		1: checkbox or radio button
+ *		2: label
+ * We want to add a substantial right margin after each
+ * label to separate it from the next pair of fields.
+ * However, we want no right margin after the last pair.
+ */
+form fieldset label:not(:last-of-type) {
+	margin-right: 5ex;
+}
+form fieldset label:last-of-type {
+	margin-right: 0ex;
+}
+
+form fieldset label {
+	min-width: auto;
+}
+
+form fieldset legend {
+	font-weight: bold;
+}
+
+/* END: General Form Fields */

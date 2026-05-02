@@ -1,0 +1,52 @@
+name: sales-leads-project
+
+services:
+
+  sales-leads-db:
+    image: sales-leads-db-image
+    container_name: sales-leads-db
+    tty: true
+    stdin_open: true
+    build:
+      context: .
+      dockerfile: sales-leads-db/Dockerfile
+    restart: on-failure
+    volumes: 
+      - "sales-leads-db-volume:/var/lib/mysql"
+    env_file:
+      sales-leads-db/.env.sales-leads-db
+    # The first port is exposed outside the container; the second is inside it.
+    ports:
+      - 12306:3306
+    networks:
+      - sales-leads-internal-network
+
+  sales-leads-ui:
+    image: sales-leads-ui-image
+    container_name: sales-leads-ui
+    tty: true
+    stdin_open: true
+    build:
+      context: .
+      dockerfile: sales-leads-ui/Dockerfile
+    volumes:
+      - ../src:/var/www/html
+      
+    depends_on:
+      - sales-leads-db
+    command: bash -c "chgrp -R www-data /var/www/html/storage && find /var/www/html/storage -type d -exec chmod 775 {} + && chgrp -R www-data /var/www/html/bootstrap/cache && chmod 775 /var/www/html/bootstrap/cache && a2enmod rewrite && apache2-foreground"
+      
+    # The first port is exposed outside the container; the second is inside it.
+    ports:
+      - 12080:80
+      - 12443:443
+    networks:
+      - sales-leads-internal-network
+      - sales-leads-external-network
+
+volumes:
+  sales-leads-db-volume:
+  
+networks:
+  sales-leads-internal-network:
+  sales-leads-external-network:
