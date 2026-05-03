@@ -5,6 +5,7 @@ namespace Carcosa\Core\Api;
 
 use Carcosa\Core\Messages\MessageCollection;
 use Carcosa\Core\Service\ServiceResult;
+use Carcosa\Core\Service\ServiceResultImmutable;
 
 /**
  * An API response class suitable for serialization to JSON.
@@ -31,7 +32,7 @@ class ApiResponseFactory
      * @param ServiceResult $result
      * @return ApiResponse
      */
-    public function createFromServiceResult(ServiceResult $result) : ApiResponse
+    public function createFromServiceResult(ServiceResult|ServiceResultImmutable $result) : ApiResponse
     {
         return $this->create(
             $result->getValues(),

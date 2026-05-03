@@ -3,6 +3,12 @@
 	import { fetchWithCsrf } from '@/main';
 	import LeadCategory from '@classes/LeadCategory';
 	
+	const emit = defineEmits({
+		'edit-category': (category: LeadCategory) => {
+			return true;
+		},
+	});
+	
 	const props = defineProps({
 		category: {
 			type:		LeadCategory,
@@ -21,15 +27,16 @@
 			
 		}
 	});
+	
 </script>
 
 <template>
 	<div class="lead-category">
 		<div class="label">{{ category.label }}</div>
 		<div class="level-toggle"></div>
-		<div class="edit"><a @click.prevent="$emit('edit-category', category);">Edit</a></div>
+		<div class="edit"><a @click.prevent="$emit('edit-category', props.category)">Edit</a></div>
 		<div class="children">
-			<LeadCategoryTreeItem v-if="category.children?.length" v-for="child in category.children" :key="child.id ?? undefined" />
+			<LeadCategoryTreeItem v-if="props.category.children?.length" v-for="child in props.category.children" :key="child.id ?? undefined" />
 		</div>
 	</div>
 </template>

@@ -75,7 +75,7 @@ class ServiceResultImmutable implements iServiceResult
      */
     public function getValues() : array
     {
-        return $this->getServiceResult()->getValue();
+        return $this->getServiceResult()->getValues();
     }
     
     /**

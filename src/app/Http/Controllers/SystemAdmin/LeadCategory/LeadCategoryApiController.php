@@ -51,12 +51,14 @@ class LeadCategoryApiController extends SystemAdminBaseController
      * Save a lead category.
      * @param Request $request
      * @param LeadCategoryService $leadCategoryService
+     * @param ApiResponseFactory $apiResponseFactory
      * @param string|null $leadCategoryId
      * @return View
      */
     public function save(
         Request $request,
         LeadCategoryService $leadCategoryService,
+        ApiResponseFactory $apiResponseFactory,
         string|null $leadCategoryId = null,
     ) {
         
@@ -69,15 +71,21 @@ class LeadCategoryApiController extends SystemAdminBaseController
         $hasError       = $serviceResult->getHasError();
         $leadCategory   = $serviceResult->getValue('leadCategory');
         
+        // Construct an API response.
+        $apiResponse = $apiResponseFactory->create(
+            ['leadCategory' => $leadCategory?->toDataObject()],
+            $serviceResult->getMessages(),
+        );
+        
         if ($hasError) {
             
             // An error occurred.
-            return response()->json($serviceResult);
+            return response()->json($apiResponse);
             
         } else {
             
             // The record was successfully saved. Return it.
-            return response()->json($serviceResult);
+            return response()->json($apiResponse);
             
         }
         
