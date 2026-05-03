@@ -3,6 +3,9 @@ declare(strict_types = 1);
 
 namespace Carcosa\Core\Auth;
 
+/**
+ * @todo Refactor these classes into interfaces defined by the Carcosa system.
+ */
 use App\Models\Db\User;
 use App\Services\User\UserService;
 use Carcosa\Core\Auth\AuthResult;
@@ -95,10 +98,6 @@ class LoginManager
             
             // Authentication succeeded. Record the user's successful login.
             $this->setLoggedInUser($authResult->getUser());
-            
-            // Save the session immediately, to preserve authentication data
-            // in case of any later error that prevents serialization to storage.
-            session()->save();
             
         } else {
             
