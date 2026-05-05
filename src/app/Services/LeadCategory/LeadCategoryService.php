@@ -5,6 +5,7 @@ namespace App\Services\LeadCategory;
 use App\Models\Db\LeadCategory;
 use App\Services\BaseUuidModelService;
 use App\Services\LeadCategory\LeadCategoryCriteria;
+use Carcosa\Core\DataStructures\TreeNodeFactory;
 use Carcosa\Core\Service\iServiceResult;
 use Carcosa\Core\Service\NoCriterion;
 use Illuminate\Support\Facades\Validator as ValidatorFacade;
@@ -123,7 +124,7 @@ class LeadCategoryService extends BaseUuidModelService
         // microservices.
         //
         $connectionName = (new LeadCategory())->getConnectionName();
-        $data           = is_array($leadCategory) ? $leadCategory : $leadCategory->toArray();
+        $data           = is_array($leadCategory) ? $leadCategory : $leadCategory->toCamelCaseArray();
         $leadCategoryId = $data['id'] ?? null;
         $leadCategory   = ("" !== "$leadCategoryId") ? $this->findOneById($leadCategoryId) : null;
         $parentId       = $data['parent_id'] ?? null;
@@ -192,6 +193,171 @@ class LeadCategoryService extends BaseUuidModelService
         
         return $result->toImmutable();
         
+    }
+    
+    /**
+     * Attempt to soft-delete a lead category record.
+     * @param array $deletionData An array containing a "leadCategoryIds"
+     * key (an array indicating the lead categories to delete), and a
+     * "childStrategy" key (a string indicating how to handle child nodes,
+     * either "delete-children" or "promote-children").
+     * @return iServiceResult
+     * @todo Convert modification of children or further descendants into
+     * a single SQL operation instead of an iteration. (Low priority, due to
+     * limited tree size and rarity of invocation in the admin system.)
+     * @todo Child strategies are not optimized; we should precalculate the
+     * dependency graph among them to prevent potentially duplicative
+     * promotions or deletions of children. (Low priority, due to
+     * limited tree size and rarity of invocation in the admin system.)
+     */
+    public function delete(array $deletionData) : iServiceResult
+    {
+        
+        // Define the validator.
+        //
+        // Note: we explicitly retrieve the database connection name here
+        // for use in validator rules. This allows us to segment our data
+        // in different databases, in preparation for decomposition into
+        // microservices.
+        //
+        $connectionName = (new LeadCategory())->getConnectionName();
+        $data           = $deletionData;
+        $validator      = ValidatorFacade::make(
+            $data,
+            [
+                "leadCategoryIds"   => "array",
+                "leadCategoryIds.*" => "uuid|exists:$connectionName.lead_category,id",
+                "childStrategy"     => "string|in:delete-children,promote-children",
+            ], [
+                // Any custom validation error messages go here.
+            ]
+        );
+        
+        // Validate the request and create a result instance.
+        $result = $this->createServiceResult($data, $validator);
+
+        // Construct the request contents.
+        if ($result->getHasError()) {
+            
+            // Validation failed.
+            $result->setValue('leadCategory', null);
+            
+        } else {
+            
+            // Validation succeeded.
+            $leadCategoryIds    = array_unique($data['leadCategoryIds']);
+            $childStrategy      = $data['childStrategy'];
+            DB::transaction(function () use ($leadCategoryId, $childStrategy) {
+                
+                // Obtain the lead categories to delete.
+                $criteria = \App::make(LeadCategoryCriteria::class);
+                $criteria->setIds($leadCategoryIds);
+                $leadCategoriesToDelete = $this->find($leadCategoryIds);
+                
+                // Handle the children (if any).
+                if ('promote-children' === $childStrategy) {
+                    
+                    // Move all children up one level.
+                    $criteria = \App::make(LeadCategoryCriteria::class);
+                    $criteria->setParentId($leadCategoryId);
+                    $children = $this->find($criteria);
+                    foreach ($children as $child) {
+                        
+                        // Change the next child's parent and attempt to save it.
+                        $child->parent_id = $leadCategoryToDelete->parent_id;
+                        $childResult = $this->save($child);
+                        if ($childResult->getHasError()) {
+                            $childId = $child->id;
+                            throw new \RuntimeException(
+                                "Failed to update parent ID of child lead " .
+                                "category $childId in " . __METHOD__
+                            );
+                        }
+                        
+                    }
+                    
+                } elseif ('delete-children' === $childStrategy) {
+                    
+                    // Delete all children and further descendants.
+                    
+                } else {
+                    
+                    // This should not happen, due to previous validation.
+                    throw new \RuntimeException(
+                        "The unrecognized child strategy \"$shildStrategy\" " .
+                        "was encountered by " . __METHOD__
+                    );
+                    
+                }
+                
+            });
+            $leadCategory = ('' === "$leadCategoryId")
+                ? $this->createNew()
+                : LeadCategory::findOrFail($leadCategoryId);
+        
+            // Update the database record.
+            $leadCategory->label        = $data['label'];
+            $leadCategory->parent_id    = $data['parentId'];
+            $leadCategory->save();
+            
+            $result->setValue('leadCategory', $leadCategory);
+            
+        }
+        
+        return $result->toImmutable();
+        
+    }
+    
+    /**
+     * Given an array of LeadCategory instance nodes, return an array
+     * of subtrees where each root nodes is a supplied instance that
+     * does not have another supplied instance as its parent.
+     * 
+     * This logic is used to identify which nodes must be promoted during
+     * deletion of the supplied nodes, since any child node that must be
+     * promoted can immediately be promoted to the parent ID of its subtree
+     * root node.
+     * @param TreeNode[] $nodesToDelete An array of TreeNode root node
+     * instances arranged as subtrees, each containing a LeadCategory
+     * instance as its value.
+     * @return array LeadCategory The affected subtrees to modify.
+     * @throws \RuntimeException If any value in the supplied array is not a
+     * LeadCategory instance.
+     */
+    private function calculateSubtreesForChildPromotion(array $nodesToDelete) : array
+    {
+        
+        // Validate the input array.
+        $this->validateLeadCategoriesArray($nodesToDelete);
+        
+        $treeNodeFactory = \App::make(TreeNodeFactory::class);
+        return $treeNodeFactory->createSubtreesFromValues(
+            $nodesToDelete,
+            fn(LeadCategory $category) => $category->id,
+            fn(LeadCategory $category) => $category->parent_id,
+        );
+        
+    }
+    
+    /**
+     * Validate that an array contains only LeadCategory instances.
+     * @param LeadCategory[] $leadCategories
+     * @return $this
+     * @throws \RuntimeException If any value in the array is not a
+     * LeadCategory instance.
+     */
+    private function validateLeadCategoriesArray(array $leadCategories) : self
+    {
+        foreach ($leadCategories as $instance) {
+            if ( ! $instance instanceof LeadCategory ) {
+                $type = get_debug_type($instance);
+                throw new \RuntimeException(
+                    "An invalid value of type $type was supplied to " .
+                    __METHOD__
+                );
+            }
+        }
+        return $this;
     }
     
 }

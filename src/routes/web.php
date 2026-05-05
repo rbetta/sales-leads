@@ -91,6 +91,13 @@ Route::prefix('api/v1/system-admin')
         Route::post('/', [LeadCategoryApiController::class, 'save'])
             ->name('api:system-admin:lead-category:save');
         
+        // Delete a lead category.
+        Route::delete('{childStrategy}/{leadCategoryId}', [LeadCategoryApiController::class, 'delete'])
+            ->whereIn('childStrategy', ['delete-children', 'promote-children'])
+            ->name('api:system-admin:lead-category:delete');
+            
+        
+            
     });
     
 });

@@ -15,6 +15,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class TimestampedSoftDeletableUuidModel extends TimestampedUuidModel
 {
     
+    use SoftDeletes;
+    
     /**
      * A class constant that defines the deletion timestamp column name.
      * @var string
@@ -29,11 +31,10 @@ class TimestampedSoftDeletableUuidModel extends TimestampedUuidModel
      */
     protected function casts() : array
     {
-        return [
-            self::CREATED_AT    => 'datetime',
-            self::UPDATED_AT    => 'datetime',
-            self::DELETED_AT    => 'datetime',
-        ];
+        return array_merge(
+            parent::casts(),
+            [self::DELETED_AT    => 'datetime',]
+        );
     }
     
 }
