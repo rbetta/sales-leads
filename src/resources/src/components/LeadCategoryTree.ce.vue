@@ -96,12 +96,9 @@
 			
 			if (isNew) {
 				// This is a new category; append it.
-				console.log(':saveCategory:categoryFromServer:', categoryFromServer);
-				console.log('saveCategory:categoryToSave (before assignment):', categoryToSave);
 				categoryToSave.id		= categoryFromServer.id;
 				categoryToSave.parentId	= categoryFromServer.parentId;
 				categoryToSave.label	= categoryFromServer.label;
-				console.log('saveCategory:categoryToSave (after assignment, ready to push to children):', categoryToSave);
 				categories.push(categoryToSave);
 			} else {
 				// This is an existing category; update it.
