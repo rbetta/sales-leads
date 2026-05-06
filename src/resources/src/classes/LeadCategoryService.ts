@@ -64,4 +64,41 @@ export default class LeadCategoryService
 		
 	}
 	
+	// Attempt to delete a lead category.
+	//
+	// Children can optionally be deleted as well. If they are not deleted,
+	// then they will be promoted to the same level as the deleted category.
+	//
+	async deleteLeadCategory(category: LeadCategory, deleteChildren: boolean) : Promise<ApiResponse>
+		{
+			
+			// Sanity check.
+			if ('' === (category.id ?? '')) {
+				throw new Error('Attempted to delete a category that is not yet saved.');
+			}
+			
+			// Determine the API URL.
+			const childStrategy		= deleteChildren ? 'delete-children' : 'promote-children';
+			const escChildStrategy	= encodeURIComponent(childStrategy);
+			const escLeadCategoryId	= encodeURIComponent(category.id ?? '');
+			const url = `/api/v1/system-admin/lead-category/${escChildStrategy}/${escLeadCategoryId}`;
+					
+			// Attempt to save the lead category.
+			const result = await fetchWithCsrf(
+				url,
+				{
+					method: 'DELETE',
+					headers: {
+						'Content-Type':	'application/json',
+					},
+					body: '',
+				}
+			);
+			const rawData		= await result.json();
+			const apiResponse	= Object.assign(new ApiResponse(), rawData);
+			
+			return apiResponse;
+			
+		}
+	
 }

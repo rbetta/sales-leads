@@ -50,4 +50,25 @@ class LeadCategoryData extends AbstractSoftDeletableTimestampedUuid
         return $this->getProperty("label");
     }
     
+    /**
+     * Set whether this instance has children (regardless of whether
+     * they are loaded into the relationship).
+     * @param bool $hasChildren
+     * @return $this
+     */
+    public function setHasChildren(bool $hasChildren) : self
+    {
+        return $this->setProperty("hasChildren", $hasChildren);
+    }
+    
+    /**
+     * Get whether this instance has children (regardless of whether
+     * they are loaded into the relationship).
+     * @return bool
+     */
+    public function getHasChildren() : bool
+    {
+        return $this->getProperty("hasChildren");
+    }
+    
 }

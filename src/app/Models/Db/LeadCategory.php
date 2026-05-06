@@ -57,8 +57,9 @@ class LeadCategory extends TimestampedSoftDeletableUuidModel implements iToDataO
     protected function assignDataObjectProperties(iDataObject $dataObject) : self
     {
         $dataObject
-            ->setLabel(     $this->label        )
-            ->setParentId(  $this->parent_id    )
+            ->setLabel(         $this->label            )
+            ->setParentId(      $this->parent_id        )
+            ->setHasChildren(   $this->getHasChildren() )
             ;
         
         return $this;
@@ -80,6 +81,24 @@ class LeadCategory extends TimestampedSoftDeletableUuidModel implements iToDataO
     public function children() : HasMany
     {
         return $this->hasMany(LeadCategory::class, 'parent_id');
+    }
+    
+    /**
+     * Get whether this instance has children (regardless of whether
+     * they are loaded into the relationship).
+     * @return bool
+     */
+    public function getHasChildren() : bool
+    {
+        
+        // If this instance is not in the DB, then it has no children.
+        if ( ! $this->exists ) {
+            return false;
+        }
+        
+        // Check if at least one child record exists.
+        return LeadCategory::where('parent_id', $this->id)->exists();
+        
     }
     
 }

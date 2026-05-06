@@ -202,13 +202,6 @@ class LeadCategoryService extends BaseUuidModelService
      * "childStrategy" key (a string indicating how to handle child nodes,
      * either "delete-children" or "promote-children").
      * @return iServiceResult
-     * @todo Convert modification of children or further descendants into
-     * a single SQL operation instead of an iteration. (Low priority, due to
-     * limited tree size and rarity of invocation in the admin system.)
-     * @todo Child strategies are not optimized; we should precalculate the
-     * dependency graph among them to prevent potentially duplicative
-     * promotions or deletions of children. (Low priority, due to
-     * limited tree size and rarity of invocation in the admin system.)
      */
     public function delete(array $deletionData) : iServiceResult
     {
@@ -239,46 +232,100 @@ class LeadCategoryService extends BaseUuidModelService
         // Construct the request contents.
         if ($result->getHasError()) {
             
-            // Validation failed.
-            $result->setValue('leadCategory', null);
-            
         } else {
             
             // Validation succeeded.
             $leadCategoryIds    = array_unique($data['leadCategoryIds']);
             $childStrategy      = $data['childStrategy'];
-            DB::transaction(function () use ($leadCategoryId, $childStrategy) {
+            DB::transaction(function () use ($leadCategoryIds, $childStrategy, $result) {
                 
                 // Obtain the lead categories to delete.
                 $criteria = \App::make(LeadCategoryCriteria::class);
                 $criteria->setIds($leadCategoryIds);
                 $leadCategoriesToDelete = $this->find($leadCategoryIds);
                 
+                // Obtain an array of TreeNode instances, where each value
+                // is the root of a subtree of lead categories to delete.
+                $treesToDelete = $this->calculateSubtreesForChildPromotion($leadCategoriesToDelete);
+                
                 // Handle the children (if any).
                 if ('promote-children' === $childStrategy) {
                     
-                    // Move all children up one level.
-                    $criteria = \App::make(LeadCategoryCriteria::class);
-                    $criteria->setParentId($leadCategoryId);
-                    $children = $this->find($criteria);
-                    foreach ($children as $child) {
+                    // Update all children of all nodes in each subtree,
+                    // setting their parent IDs to the parent ID of the
+                    // subtree's root node. (This will automatically promote
+                    // all affected children to the correct level.)
+                    foreach ($treesToDelete as $treeToDelete) {
                         
-                        // Change the next child's parent and attempt to save it.
-                        $child->parent_id = $leadCategoryToDelete->parent_id;
-                        $childResult = $this->save($child);
-                        if ($childResult->getHasError()) {
-                            $childId = $child->id;
-                            throw new \RuntimeException(
-                                "Failed to update parent ID of child lead " .
-                                "category $childId in " . __METHOD__
-                            );
-                        }
+                        // Obtain the root LeadCategory of this subtree.
+                        $rootLeadCategory = $treeToDelete->getValue();
                         
+                        // Obtain all model IDs in this subtree.
+                        $treeIdsToDelete = $this->getIdsFromModels(
+                            $treeToDelete->toFlattenedValuesArray()
+                        );
+                        
+                        // Promote all children in this subtree.
+                        DB::table('lead_category')
+                            
+                            // Select all children of deleted nodes.
+                            ->whereIn('parent_id', $treeIdsToDelete)
+                            
+                            // Exclude the deleted nodes themselves.
+                            ->whereNotIn('id', $treeIdsToDelete)
+                            
+                            ->update(['parent_id' => $rootLeadCategory->parent_id]);
+                        
+                    }
+                    
+                    // Delete all requested LeadCategory instances.
+                    foreach ($leadCategoriesToDelete as $leadCategoryToDelete) {
+                        $leadCategory->delete();
                     }
                     
                 } elseif ('delete-children' === $childStrategy) {
                     
                     // Delete all children and further descendants.
+                    foreach ($treesToDelete as $treeToDelete) {
+                        
+                        // Obtain the root LeadCategory of this subtree.
+                        $rootLeadCategory = $treeToDelete->getValue();
+                        
+                        // Identify all lead category IDs in this subtree, including
+                        // all descendants at all level (even those not explicitly
+                        // included in the supplied list of lead categories to delete).
+                        $results = DB::select('
+                            WITH RECURSIVE tree_nodes AS (
+                                
+                                -- Select root node.
+                                SELECT      id
+                                FROM        lead_category
+                                WHERE       id = :root_id
+
+                                UNION ALL
+
+                                -- Recursively join the table to the CTE.
+                                SELECT      lc.id
+                                FROM        lead_category lc
+                                INNER JOIN  tree_nodes tn ON lc.parent_id = tn.id
+
+                            )
+                            SELECT id FROM tree_nodes',
+                            ['root_id' => $rootLeadCategory->id]
+                        );
+                        
+                        // Convert the lead category IDs into LeadCategory instances,
+                        // and delete them.
+                        //
+                        // TO-DO: consider deleting in batch SQL updates for efficiency, rather than using Eloquent soft-delete operations.
+                        //
+                        $criteria = \App::make(LeadCategoryCriteria::class);
+                        $criteria->setIds(array_map(fn($row) => $row->id, $results));
+                        foreach ($this->find($criteria) as $leadCategory) {
+                            $leadCategory->delete();
+                        }
+                        
+                    }
                     
                 } else {
                     
@@ -310,17 +357,13 @@ class LeadCategoryService extends BaseUuidModelService
     
     /**
      * Given an array of LeadCategory instance nodes, return an array
-     * of subtrees where each root nodes is a supplied instance that
-     * does not have another supplied instance as its parent.
-     * 
-     * This logic is used to identify which nodes must be promoted during
-     * deletion of the supplied nodes, since any child node that must be
-     * promoted can immediately be promoted to the parent ID of its subtree
-     * root node.
-     * @param TreeNode[] $nodesToDelete An array of TreeNode root node
-     * instances arranged as subtrees, each containing a LeadCategory
-     * instance as its value.
-     * @return array LeadCategory The affected subtrees to modify.
+     * of TreeNode subtrees where each array value is the root of a
+     * subtree of related LeadCategory instances.
+     * @param LeadCategory[] $nodesToDelete An array of LeadCategory
+     * instances to delete.
+     * @return TreeNode[] An array of TreeNode instances, where each array
+     * value is the root of a subtree of related LeadCategory values to
+     * delete.
      * @throws \RuntimeException If any value in the supplied array is not a
      * LeadCategory instance.
      */

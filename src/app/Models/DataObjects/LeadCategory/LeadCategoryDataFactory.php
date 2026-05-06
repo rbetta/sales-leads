@@ -39,8 +39,9 @@ class LeadCategoryDataFactory extends AbstractDataObjectFactory
     protected function assignCustomProperties(\stdClass $properties, iDataObject $instance) : self
     {
         $instance
-            ->setLabel(     $properties->label      )
-            ->setParentId(  $properties->parentId   )
+            ->setLabel(         $properties->label          )
+            ->setParentId(      $properties->parentId       )
+            ->setHasChildren(   $properties->hasChildren    )
             ;
     }
 

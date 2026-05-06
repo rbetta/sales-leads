@@ -7,6 +7,9 @@
 		'edit-category': (category: LeadCategory) => {
 			return true;
 		},
+		'delete-category': (category: LeadCategory) => {
+			return true;
+		},
 	});
 	
 	const props = defineProps({
@@ -34,7 +37,8 @@
 	<div class="lead-category">
 		<div class="label">{{ category.label }}</div>
 		<div class="level-toggle"></div>
-		<div class="edit"><a @click.prevent="$emit('edit-category', props.category)">Edit</a></div>
+		<div class="edit"><a @click.prevent="$emit('edit-category', Object.assign({}, props.category))">Edit</a></div>
+		<div class="delete"><a @click.prevent="$emit('delete-category', Object.assign({}, props.category))">Delete</a></div>
 		<div class="children">
 			<LeadCategoryTreeItem v-if="props.category.children?.length" v-for="child in props.category.children" :key="child.id ?? undefined" />
 		</div>

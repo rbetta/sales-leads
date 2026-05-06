@@ -62,7 +62,6 @@
 	function addRootCategory()
 	{
 		const newCategory = new LeadCategory();
-		categories.push(newCategory);
 		categoryToEdit.value = newCategory;
 	}
 	
@@ -78,6 +77,9 @@
 			return;
 		}
 		
+		// Is the category new?
+		const isNew: boolean = ('' === (categoryToSave.id ?? ''));
+		
 		// Attempt to save the category.
 		const service		= new LeadCategoryService();
 		const apiResponse	= await service.saveLeadCategory(categoryToSave);
@@ -85,13 +87,97 @@
 		// Retrieve errors from the response.
 		editCategoryErrors.value = apiResponse.getAllErrors();
 		
-		// Close the editor on succss.
+		// Handle a successful save operation.
 		if (! apiResponse.hasErrors()) {
+			
+			// Retrieve the lead category returned by the server.
+			const apiModelFromServer: ApiModel		= Object.assign(new ApiModel(), apiResponse.getData('leadCategory'));
+			const categoryFromServer: LeadCategory	= Object.assign(new LeadCategory(), apiModelFromServer.getAllProperties());
+			
+			if (isNew) {
+				// This is a new category; append it.
+				console.log(':saveCategory:categoryFromServer:', categoryFromServer);
+				console.log('saveCategory:categoryToSave (before assignment):', categoryToSave);
+				categoryToSave.id		= categoryFromServer.id;
+				categoryToSave.parentId	= categoryFromServer.parentId;
+				categoryToSave.label	= categoryFromServer.label;
+				console.log('saveCategory:categoryToSave (after assignment, ready to push to children):', categoryToSave);
+				categories.push(categoryToSave);
+			} else {
+				// This is an existing category; update it.
+				const indexToUpdate = findChildCategoryIndex(categoryToSave);
+				if (null !== indexToUpdate) {
+					// Only the label can be updated.
+					(categories[indexToUpdate] as LeadCategory).label = categoryFromServer.label;
+				} 
+			}
+			
+			// Close the editor.
 			categoryToEdit.value = null;
 		}
 		
 	}
 	
+	// Handle an attempt to delete a lead category.
+	async function deleteCategory(e: CustomEvent)
+	{
+		
+		// Extract the category to delete from the event.
+		const [categoryToDelete]: [LeadCategory] = e.detail;
+
+		// Sanity check.
+		if (null === categoryToDelete) {
+			return;
+		}
+		
+		// Attempt to delete the category.
+		const deleteChildren	= false;	// Don't delete children; promote them instead.
+		const service			= new LeadCategoryService();
+		const apiResponse		= await service.deleteLeadCategory(categoryToDelete, deleteChildren);
+		
+		// Handle a successful deletion.
+		if (! apiResponse.hasErrors()) {
+			
+			// Close the editor if the category being edited was deleted.
+			if (categoryToEdit.value?.id === categoryToDelete.id) {
+				categoryToEdit.value = null;
+			}
+			
+			// Remove the deleted category from this component's children.
+			const indexToDelete = findChildCategoryIndex(categoryToDelete);
+			if (null !== indexToDelete) {
+				categories.splice(indexToDelete, 1);
+			}
+			
+		}
+		
+	}
+	
+	// Retrieve the index of the children property for a matching
+	// LeadCategory by ID. If it is not present, or if the supplied
+	// LeadCategory instance has no ID, then throw an exception.
+	function findChildCategoryIndex(category: LeadCategory) : number|null
+	{
+		
+		// Sanity check.
+		if ('' === (category.id ?? '')) {
+			throw new Error(
+				'A LeadCategory supplied to the child searcher had no ID.'
+			);
+		}
+		
+		// Find the index of the matching category.
+		for (const [index, existingCategory] of categories.entries()) {
+			if (category.id === existingCategory.id) {
+				return index;
+			}
+		}
+		
+		// The lead category was not found among the children.
+		return null;
+		
+	}
+
 </script>
 
 <template>
@@ -109,6 +195,7 @@
 		<lead-category-tree-item
 			v-for="category in categories"
 			@edit-category="editCategory"
+			@delete-category="deleteCategory"
 			:key="category.id"
 			:category="category"
 			:csrfToken="csrfToken"

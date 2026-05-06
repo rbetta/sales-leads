@@ -287,4 +287,17 @@ class TreeNode
         return $this->children;
     }
     
+    /**
+     * Return the values from this tree after flattening its structure.
+     * @return mixed[] An array of all values in this instance's nodes.
+     */
+    public function toFlattenedValuesArray() : array
+    {
+        $results = [$this->getValue()];
+        foreach ($this->getChildren() as $child) {
+            $results = array_merge($results, $child->toFlattenedValues());
+        }
+        return $results;
+    }
+    
 }
