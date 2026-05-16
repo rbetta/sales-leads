@@ -28,6 +28,7 @@
 				<div>
                 	<nav>
                 		<a href="{{ route('system-admin:home:logged-in') }}">Home</a>
+                		<a href="{{ route('system-admin:lead-category:display-lead-category-list') }}">Categories</a>
                 		<a href="{{ route('logout:password:handle-logout-form') }}">Logout</a>
                 	</nav>
                 </div>

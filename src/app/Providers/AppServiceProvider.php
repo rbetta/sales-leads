@@ -13,6 +13,7 @@ use App\View\Components\AdminForm\AdminFieldTextArea;
 use App\View\Components\AdminForm\Sort\AdminSortItem;
 use App\View\Components\ClientForm\ClientFieldLocalizedText;
 use App\View\Components\ClientForm\ClientFieldReadOnly;
+use App\View\Components\LeadCategory;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider;
 
@@ -43,6 +44,9 @@ class AppServiceProvider extends ServiceProvider
         Blade::component('admin-field-text',            AdminFieldText::class);
         Blade::component('admin-field-textarea',        AdminFieldTextArea::class);
         Blade::component('admin-sort-item',             AdminSortItem::class);
+        
+        // Register the Blade component for rendering a lead category tree node.
+        Blade::component('lead-category',               LeadCategory::class);
         
     }
 }

@@ -8,6 +8,7 @@ use App\Services\LeadCategory\LeadCategoryCriteria;
 use Carcosa\Core\DataStructures\TreeNodeFactory;
 use Carcosa\Core\Service\iServiceResult;
 use Carcosa\Core\Service\NoCriterion;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator as ValidatorFacade;
 use Illuminate\Validation\Validator;
 use Illuminate\Validation\Rule;
@@ -65,6 +66,51 @@ class LeadCategoryService extends BaseUuidModelService
         return $this->handleFindOneOrNone($results);
     }
     
+    /**
+     * Get all LeadCategory instances as an array of TreeNode instances,
+     * each of which is a tree itself (i.e. each of which has children).
+     * @return TreeNode[]
+     */
+    public function getAllAsTrees() : array
+    {
+        
+        // Retrieve all lead category IDs in the entire tree.
+        $rows = DB::select('
+            WITH RECURSIVE tree_nodes AS (
+                
+                -- Select root node.
+                SELECT      id
+                FROM        lead_category
+                WHERE       parent_id IS NULL
+
+                UNION ALL
+
+                -- Recursively join the table to the CTE.
+                SELECT      lc.id
+                FROM        lead_category lc
+                INNER JOIN  tree_nodes tn ON lc.parent_id = tn.id
+
+            )
+            SELECT id FROM tree_nodes
+        ');
+        
+        // Convert the lead category IDs into LeadCategory instances.
+        $criteria = \App::make(LeadCategoryCriteria::class);
+        $criteria->setIds(array_map(fn($row) => $row->id, $rows));
+        $leadCategories = $this->find($criteria);
+        
+        // Sanity check: does the array only contain LeadCategory instances?
+        $this->validateLeadCategoriesArray($leadCategories);
+        
+        // Return all lead categories in an array of TreeNode instances.
+        $treeNodeFactory = \App::make(TreeNodeFactory::class);
+        return $treeNodeFactory->createSubtreesFromValues(
+            $leadCategories,
+            fn(LeadCategory $category) => $category->id,
+            fn(LeadCategory $category) => $category->parent_id,
+        );
+        
+    }
     
     /**
      * Find an arbitrary number of model instances.
@@ -127,7 +173,7 @@ class LeadCategoryService extends BaseUuidModelService
         $data           = is_array($leadCategory) ? $leadCategory : $leadCategory->toCamelCaseArray();
         $leadCategoryId = $data['id'] ?? null;
         $leadCategory   = ("" !== "$leadCategoryId") ? $this->findOneById($leadCategoryId) : null;
-        $parentId       = $data['parent_id'] ?? null;
+        $parentId       = $data['parentId'] ?? null;
         $validator      = ValidatorFacade::make(
             $data,
             [
@@ -137,17 +183,14 @@ class LeadCategoryService extends BaseUuidModelService
                     "required",
                     "string",
                     Rule::unique("$connectionName.lead_category")
-                        ->where(function($query) use ($parentId, $leadCategory) {
-                            $query
-
-                                // Label uniqueness only counts among tree siblings.
-                                ->when(
-                                    (null === $parentId),
-                                    fn($q) => $q->whereNull('parent_id'),
-                                    fn($q) => $q->where('parent_id', $parentId)
-                                );
-                        })
-                                
+                    
+                        // Limit scope to only sibling nodes in the tree.
+                        ->when(
+                            (null === $parentId),
+                            fn($q) => $q->whereNull('parent_id'),
+                            fn($q) => $q->where('parent_id', $parentId)
+                        )
+                         
                         // Deleted records can be duplicates.
                         ->whereNull('deleted_at')       
                         

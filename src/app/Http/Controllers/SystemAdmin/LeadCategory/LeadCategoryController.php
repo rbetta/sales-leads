@@ -15,61 +15,66 @@ class LeadCategoryController extends SystemAdminBaseController
     /**
      * Display the list of lead categories.
      * @param Request $request
-     * @param LeadCategoryService $leadCategoryService
      * @param LeadCategoryCriteria $leadCategoryCriteria
      * @return View
      */
     public function displayLeadCategoriesList(
         Request $request,
         LeadCategoryService $leadCategoryService,
-        LeadCategoryCriteria $leadCategoryCriteria
     ) {
         
-        // Retrieve all records.
-        $leadCategories = $leadCategoryService->find($leadCategoryCriteria);
+        // Retrieve all records as an array of TreeNode instances,
+        // each containing a LeadCategory instance as its value.
+        $leadCategoryTrees = $leadCategoryService->getAllAsTrees();
 
         // Display the list to the end user.
         return view('system-admin.lead-category.list-lead-categories', [
-            'leadCategories' => $leadCategories,
+            'leadCategories' => $leadCategoryTrees,
         ]);
         
     }
     
     /**
-     * Display the Create or Edit Lead Category form.
+     * Display the Create Lead Category form.
+     * @param Request $request
+     * @param LeadCategoryService $leadCategoryService,
+     * @param ?string $parentId The parent lead category ID (if any).
+     * @return View
+     */
+    public function displayCreateLeadCategoryForm(
+        Request $request,
+        LeadCategoryService $leadCategoryService,
+        ?string $parentId = null
+    ) {
+        
+        $leadCategory = $leadCategoryService->createNew();
+        if ('' !== "$parentId") {
+            $parentCategory = $leadCategoryService->findOneById($parentId);
+            $leadCategory->parent()->associate($parentCategory);
+        }
+        return view('system-admin.lead-category.create-or-edit-lead-category', [
+            'leadCategory' => $leadCategory,
+        ]);
+        
+    }
+    
+    /**
+     * Display the Edit Lead Category form.
      * @param Request $request
      * @param LeadCategoryService $leadCategoryService
-     * @param LeadCategoryCriteria $leadCategoryCriteria
      * @param ?string $leadCategoryId
      * @return View
      */
-    public function displayCreateOrEditLeadCategoryForm(
+    public function displayEditLeadCategoryForm(
         Request $request,
         LeadCategoryService $leadCategoryService,
-        LeadCategoryCriteria $leadCategoryCriteria,
-        ?string $leadCategoryId = null
+        string $leadCategoryId
     )
     {
-
-        // Determine if we are creating or editing a record.
-        $isNew = ('' === (string) $leadCategoryId);
-
-        $viewData = [];
-        if ($isNew) {
-            
-            // We are creating a new record.
-            $viewData['leadCategory'] = null;
-            
-        } else {
-            
-            // We are editing an existing record.
-            $leadCategoryCriteria->setId($leadCategoryId);
-            $leadCategory = $leadCategoryService->findOne($leadCategoryCriteria);
-            $viewData['leadCategory'] = $leadCategory;
-            
-        }
-        
-        return view('system-admin.lead-category.create-or-edit-lead-category', $viewData);
+        $leadCategory = $leadCategoryService->findOneById($leadCategoryId);
+        return view('system-admin.lead-category.create-or-edit-lead-category', [
+            'leadCategory' => $leadCategory,
+        ]);
     }
     
     /**

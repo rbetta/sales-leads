@@ -71,7 +71,7 @@ class LeadCategory extends TimestampedSoftDeletableUuidModel implements iToDataO
      */
     public function parent() : BelongsTo
     {
-        return $this->parent(LeadCategory::class, 'parent_id');
+        return $this->belongsTo(LeadCategory::class, 'parent_id');
     }
     
     /**

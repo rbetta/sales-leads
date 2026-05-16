@@ -11,7 +11,9 @@ Sales Lead System
 <div>
 
 	<h1>Lead Categories</h1>
-	<lead-category-tree />
+	@foreach ($leadCategories as $leadCategory)
+	<x-lead-category :leadCategory="$leadCategory" />
+	@endforeach
 	
 </div>
 @endsection

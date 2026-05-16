@@ -96,12 +96,15 @@ class TreeNode
      */
     public function setParent(TreeNode|null $parent) : self
     {
+        
         // Obtain this node's parent prior to setting it to
         // the newly supplied value.
         $prevParent = $this->getParent();
         
-        // Remove this node from the parent's array of children.
-        if (null !== $prevParent) {
+        // Remove this node from the parent's array of children,
+        // if it currently has a parent and if the parent is not
+        // already the newly requested parent.
+        if (null !== $prevParent && $parent !== $prevParent) {
             $prevParent->removeChild($this);
         }
         
@@ -114,7 +117,9 @@ class TreeNode
         } else {
             
             // This node is being made a child of another existing node.
-            $parent->addChild($this);
+            if (! $parent->getHasChild($this) ) {
+                $parent->addChild($this);
+            }
             
         }
         
@@ -167,7 +172,7 @@ class TreeNode
      */
     public function getHasParent() : bool
     {
-        return (null === $this->getParent());
+        return (null !== $this->getParent());
     }
     
     /**
@@ -204,8 +209,19 @@ class TreeNode
                 $prevParent->removeChild($child);
             }
             
-            // Add the child to this node's children.
-            $thild->setParent($this);
+            // Add the child to this node's children, if this hasn't
+            // already been done.
+            //
+            // NOTE: TreeNode::setParent() may already have been called
+            // on the child, so the test here avoids an infinite loop.
+            //
+            // WARNING: add the child to this instance's array of
+            // children FIRST, or else there will be an infinite loop.
+            //
+            $this->children[] = $child;
+            if ($child->getParent() !== $this) {
+                $child->setParent($this);
+            }
             
         } else {
             
@@ -215,7 +231,7 @@ class TreeNode
             // Since this is a completely new TreeNode, we can safely
             // immediately add it to this node's children.
             $newChild->setParent($this);
-            $this->children[] = $newChild;
+            $this->addChild($newChild);
             
         }
         
@@ -287,6 +303,15 @@ class TreeNode
         return $this->children;
     }
     
+    /**
+     * Get whether this node has any childen.
+     * @return bool
+     */
+    public function getHasChildren() : bool
+    {
+        return (bool) $this->getChildren();
+    }
+
     /**
      * Return the values from this tree after flattening its structure.
      * @return mixed[] An array of all values in this instance's nodes.

@@ -1,0 +1,20 @@
+.lead-category {
+	border: 1px solid grey;
+	margin: 5px;
+	padding: 10px;
+	width: max-content;
+}
+
+.lead-category-label {
+	display: inline-block;
+	font-weight: bold;
+	min-width: 50ex;
+}
+
+.lead-category-add-child {
+	display: inline-block;
+}
+
+.lead-category.children {
+	margin-left: 30px;
+}

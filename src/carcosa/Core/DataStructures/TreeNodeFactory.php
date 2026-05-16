@@ -46,35 +46,35 @@ class TreeNodeFactory
      */
     public function createSubtreesFromValues(
         iterable $values,
-        \Closue $getId,
+        \Closure $getId,
         \Closure $getParentId
     ) : array
     {
         
         // Initialize a flat array of all supplied values, keyed by
         // their IDs and wrapped in TreeNode instances.
-        $allNodesById = $values
-            ->all()
+        $allNodesById = collect($values)
             ->keyBy($this->wrapIdGetter($getId))
-            ->map(fn($value) => $this->create($value));
+            ->map(fn($value) => $this->create($value))
+            ->all();
         
         // Wrap the closure that obtains a value's parent ID, so we
         // can enforce type safety on its return value.
         $getParentId = $this->wrapParentIdGetter($getParentId);
-            
+        
         // Attach each node to its parent (if its parent is in the
         // supplied array of nodes).
         foreach ($allNodesById as $nodeToAttach) {
             
             // Obtain the next node's parent ID.
-            $parentId = $getParentId($nodeToAttach);
-            
+            $parentId = $getParentId($nodeToAttach->getValue());
             if (array_key_exists($parentId, $allNodesById)) {
                 
                 // The parent node is in the array of all supplied nodes.
                 // Attach the child node to the parent node.
                 $parentNode = $allNodesById[$parentId];
                 $nodeToAttach->setParent($parentNode);
+
             }
             
         }
