@@ -109,12 +109,8 @@ class TreeNode
         }
         
         // Attach this node to the new parent, or make it a root node.
-        if (null === $parent) {
-            
-            // This is a new root node.
-            $this->parent = null;
-            
-        } else {
+        $this->parent = $parent;
+        if (null !== $parent && $parent !== $prevParent) {
             
             // This node is being made a child of another existing node.
             if (! $parent->getHasChild($this) ) {
@@ -205,7 +201,7 @@ class TreeNode
             
             // Remove the child from its previous parent (if any).
             $prevParent = $child->getParent();
-            if (null !== $prevParent) {
+            if (null !== $prevParent && $prevParent !== $this) {
                 $prevParent->removeChild($child);
             }
             

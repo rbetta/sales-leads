@@ -18,8 +18,9 @@ jQuery.ajaxSetup({
 @endverbatim
 
 <!-- Application-specific JavaScript files. -->
-<script type="text/javascript" src="/js/admin/main.js"></script>
+<script type="text/javascript" src="/js/system-admin/main.js"></script>
+<script type="text/javascript" src="/js/system-admin/custom.js"></script>
 
 <!-- Application-specific Cascading Style Sheets. -->
-<link rel="stylesheet" type="text/css" href="/css/admin/main.css" />
-<link rel="stylesheet" type="text/css" href="/css/admin/custom.css" />
+<link rel="stylesheet" type="text/css" href="/css/system-admin/main.css" />
+<link rel="stylesheet" type="text/css" href="/css/system-admin/custom.css" />

@@ -101,4 +101,15 @@ class LeadCategory extends TimestampedSoftDeletableUuidModel implements iToDataO
         
     }
     
+    /**
+     * Automatically set the null_if_deleted flag when deleting an instance.
+     */
+    protected static function booted()
+    {
+        static::deleting(function ($instance) {
+            $instance->null_if_deleted = null;
+            $instance->save();
+        });
+    }
+    
 }

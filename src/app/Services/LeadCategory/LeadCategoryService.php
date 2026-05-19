@@ -275,17 +275,20 @@ class LeadCategoryService extends BaseUuidModelService
         // Construct the request contents.
         if ($result->getHasError()) {
             
+            $result->setValue('deletedLeadCategories', []);
+            
         } else {
             
             // Validation succeeded.
-            $leadCategoryIds    = array_unique($data['leadCategoryIds']);
-            $childStrategy      = $data['childStrategy'];
+            $leadCategoryIds        = array_unique($data['leadCategoryIds']);
+            $childStrategy          = $data['childStrategy'];
+            $deletedLeadCategories  = [];
             DB::transaction(function () use ($leadCategoryIds, $childStrategy, $result) {
                 
                 // Obtain the lead categories to delete.
                 $criteria = \App::make(LeadCategoryCriteria::class);
                 $criteria->setIds($leadCategoryIds);
-                $leadCategoriesToDelete = $this->find($leadCategoryIds);
+                $leadCategoriesToDelete = $this->find($criteria);
                 
                 // Obtain an array of TreeNode instances, where each value
                 // is the root of a subtree of lead categories to delete.
@@ -324,6 +327,7 @@ class LeadCategoryService extends BaseUuidModelService
                     // Delete all requested LeadCategory instances.
                     foreach ($leadCategoriesToDelete as $leadCategoryToDelete) {
                         $leadCategory->delete();
+                        $deletedLeadCategories[] = $leadCategory;
                     }
                     
                 } elseif ('delete-children' === $childStrategy) {
@@ -366,6 +370,7 @@ class LeadCategoryService extends BaseUuidModelService
                         $criteria->setIds(array_map(fn($row) => $row->id, $results));
                         foreach ($this->find($criteria) as $leadCategory) {
                             $leadCategory->delete();
+                            $deletedLeadCategories[] = $leadCategory;
                         }
                         
                     }
@@ -381,16 +386,9 @@ class LeadCategoryService extends BaseUuidModelService
                 }
                 
             });
-            $leadCategory = ('' === "$leadCategoryId")
-                ? $this->createNew()
-                : LeadCategory::findOrFail($leadCategoryId);
-        
-            // Update the database record.
-            $leadCategory->label        = $data['label'];
-            $leadCategory->parent_id    = $data['parentId'];
-            $leadCategory->save();
             
-            $result->setValue('leadCategory', $leadCategory);
+            // Include all deleted categories in the result.
+            $result->setValue('deletedLeadCategories', $deletedLeadCategories);
             
         }
         

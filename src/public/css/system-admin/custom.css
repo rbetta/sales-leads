@@ -15,6 +15,18 @@
 	display: inline-block;
 }
 
+.lead-category-edit {
+	display: inline-block;
+}
+
+.lead-category-delete {
+	display: inline-block;
+}
+
 .lead-category.children {
 	margin-left: 30px;
+}
+
+.lead-category.deleted {
+	background-color: #660000;
 }

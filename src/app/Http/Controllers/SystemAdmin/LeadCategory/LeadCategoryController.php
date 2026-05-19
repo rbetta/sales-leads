@@ -78,6 +78,49 @@ class LeadCategoryController extends SystemAdminBaseController
     }
     
     /**
+     * Handle a Delete Lead Category form submission.
+     * @param Request $request
+     * @param LeadCategoryService $leadCategoryService
+     */
+    public function handleDeleteLeadCategoryForm(
+        Request $request,
+        LeadCategoryService $leadCategoryService,
+    ) {
+        
+        // Store form submission values in the session.
+        $request->flash();
+        
+        // Attempt to create or update the record.
+        $serviceResult  = $leadCategoryService->delete([
+            'childStrategy'     => $request->input('childStrategy'),
+            'leadCategoryIds'   => $request->input('leadCategoryIds'),
+        ]);
+        $hasError               = $serviceResult->getHasError();
+        $deletedLeadCategories  = $serviceResult->getValue('deletedLeadCategories');
+        
+        // Display the result to the end user.
+        if (! $hasError) {
+            
+            // A subtree was deleted. Redirect to the record list.
+            return redirect()->route(
+                'system-admin:lead-category:display-lead-category-list',
+                []
+            );
+            
+        } else {
+            
+            // A validation error occurred. Redisplay the form.
+            $errors = $serviceResult
+                ->getMessages()
+                ->toMessageBag();
+            dd($errors);
+            return back()->withInput()->withErrors($errors);
+            
+        }
+        
+    }
+    
+    /**
      * Handle the Create or Edit Lead Category form submission.
      * @param Request $request,
      * @param LeadCategoryService $leadCategoryService

@@ -74,9 +74,17 @@ Route::prefix('system-admin')->namespace('SystemAdmin')->middleware(Authenticate
         Route::get('create/for-parent/{parentId?}', [LeadCategoryController::class, 'displayCreateLeadCategoryForm'])
             ->name('system-admin:lead-category:display-create-lead-category-form');
 
+        // Display the "edit lead category" screen.
+        Route::get('edit/{leadCategoryId?}', [LeadCategoryController::class, 'displayEditLeadCategoryForm'])
+            ->name('system-admin:lead-category:display-edit-lead-category-form');
+            
         // Handle a submission of the "create/edit lead category" screen.
-        Route::post('lead-category', [LeadCategoryController::class, 'handleCreateOrEditLeadCategoryForm'])
+        Route::post('/', [LeadCategoryController::class, 'handleCreateOrEditLeadCategoryForm'])
             ->name('system-admin:lead-category:handle-create-or-edit-lead-category-form');
+        
+        // Handle a request to delet a lead category.
+        Route::post('delete', [LeadCategoryController::class, 'handleDeleteLeadCategoryForm'])
+            ->name('system-admin:lead-category:delete-lead-category');
         
     });
     
